@@ -1,7 +1,7 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2021-03-09"
+date: "2021-03-26"
 output:
   ioslides_presentation:
     widescreen: true
@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 - Multi node parallel
 
 ## Getting setup
-- Slides are available at XXXX
+- Slides are available at https://uschpc.github.io/workshop-hpc-python/   
 - `git clone XXX`
 - Open `index.html` in browser
 - examples in `examples`
