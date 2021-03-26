@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16GB
+#SBATCH --time=1:00:00
+#SBATCH --account=<account_id>
+
+module purge
+module load gcc/8.3.0
+module load openblas/0.3.8
+module load r/4.0.0
+
+Rscript --vanilla script.R
