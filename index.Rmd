@@ -24,7 +24,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Getting setup
 - Slides are available at https://uschpc.github.io/workshop-hpc-python/   
-- `git clone XXX`
+- `git clone https://github.com/uschpc/workshop-hpc-python.git`
 - Open `index.html` in browser
 - examples in `examples`
 - Requirements:
