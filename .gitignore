@@ -2,3 +2,5 @@ output
 profile_data
 *.txt
 *.log
+images/*.svg
+images/*.nb
