@@ -2,15 +2,19 @@
 
 Workshop materials for *High-Performance Computing with Python*.
 
-Intermediate-to-advanced topics for getting improved Python performance in an HPC cluster environment. Covers debugging, profiling, and parallel programming.
+Intermediate-to-advanced topics for getting improved Python performance in an HPC cluster environment. Covers profiling, multiprocessing, mpi4py, and a little bit of parallel IO.
 
 Slides: https://uschpc.github.io/workshop-hpc-python/
 
 Example job scripts:
 
-- [serial.job](job-scripts/serial.job)
-- [multicore.job](job-scripts/multicore.job)
-- [mpi.job](job-scripts/mpi.job)
+- [serial.job](examples/job-scripts/serial.job)
+- [multicore.job](examples/job-scripts/multicore.job)
+- [mpi.job](examples/job-scripts/mpi.job)
+
+Example python scripts:
+
+- [examples](examples)
 
 ### Additional resources
 
