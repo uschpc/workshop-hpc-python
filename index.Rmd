@@ -1,11 +1,12 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2021-03-26"
+date: "2021-06-10"
 output:
   ioslides_presentation:
     widescreen: true
     smaller: true
+    highlight: pygments
 ---
 
 ```{r setup, include = FALSE}
@@ -85,7 +86,7 @@ A few tools:
 
 
 - Profiling
-    - cProfile, viztracer to generage profile info
+    - cProfile, viztracer to generate profile info
     - snakeviz to display results
     - On CARC systems, download output files to view graphics locally
 - Benchmarking
@@ -125,7 +126,7 @@ knitr::include_graphics("images/snakeviz.png")
 ## Interpreting results
 
 This snippet is not great
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 def write_data(x,y,n,t):
     filename=("output/%s%05d" %(output,i))
 
@@ -153,7 +154,7 @@ def write_data(x,y,n,t):
 ## Vectorizing code example
 
 - Usually if you're implementing a loop there's a faster way
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 def write_data(X,Y,n,t):
     filename=("output/%s%05d" %(output,i))
 
@@ -162,7 +163,7 @@ def write_data(X,Y,n,t):
 
 ```
 Where
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 x = np.arange(x_origin-size/2,x_origin+size/2,1)
 y = np.arange(y_origin-size/2,y_origin+size/2,1)
 X,Y = np.meshgrid(x,y)
@@ -216,12 +217,12 @@ New `write_vectorized.py` ~ 1.4s
 
 - Our example has the line
 
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
     np.savetxt(filename,data)
 ```
 - Generate many small files in plain, text
 - Sacrifice readibility for performance?
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
     np.save(filename,data)
 ```
 - We save time by writing less data, in binary
@@ -303,8 +304,7 @@ New `write_vectorized.py` ~ 1.4s
 - Multiprocessing is a built in package
 - Create pool of processes
 - Typical example, apply a function over multiple inputs
-```
-
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 def f(x):
     return x*x
 
@@ -314,7 +314,7 @@ if __name__ == '__main__':
 ```
 
 - Since we have multiple arguments
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 with mp.Pool(processes=nWorkers) as pool:
     for i in range(0,nFiles):
         pool.apply(write_data,args=(X,Y,output,nFiles,i,))
@@ -354,7 +354,7 @@ knitr::include_graphics("images/viztracer_overview.png")
 - There is communication overhead
 - This line is problematic:
 
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 pool.apply(write_data,args=(X,Y,output,nFiles,i))
 ```
 
@@ -381,7 +381,7 @@ knitr::include_graphics("images/cup_queue.png")
 ## Custom process class
 You can find this in `examples/write_multiprocessing_queue.py`
 <div class="columns-2">
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 class worker(mp.Process):
     def __init__(self,task_queue,result_queue,
                 size,output,nFiles,**kwargs):
@@ -439,7 +439,7 @@ knitr::include_graphics("images/mpq_large_bench.png")
 
 ## Example Slurm job script for multiple cores
 
-```
+```{r,engine='bash',eval=FALSE,highlight=TRUE}
 #!/bin/bash
 
 #SBATCH --nodes=1
@@ -472,7 +472,7 @@ python3 /path/to/script.py
 ```{r,echo=FALSE,out.width="100%"}
 knitr::include_graphics("images/mpi_split.png")
 ```
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 print("My names is rank %d"%rank+  " and I'm starting...")
     if rank == 0:
         data = np.arange(nFiles,dtype='i')
@@ -535,7 +535,7 @@ knitr::include_graphics("images/mpi_bench_scatter.png")
 - `comm.Scatter` will share data to every worker
 - Check for pre-built solutions
 
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 print("My names is rank %d"%rank+  " and I'm starting...")
 chunks=None
 if rank == 0:
@@ -611,7 +611,7 @@ def write_data(X,Y,output,nFiles,i,hf):
 
 ## Example Slurm job script for MPI job
 
-```
+```{r,engine='bash',eval=FALSE,highlight=TRUE}
 #!/bin/bash
 
 #SBATCH --ntasks=16

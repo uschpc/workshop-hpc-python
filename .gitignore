@@ -4,3 +4,4 @@ profile_data
 *.log
 images/*.svg
 images/*.nb
+.Rproj.user
