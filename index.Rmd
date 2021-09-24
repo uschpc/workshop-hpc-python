@@ -1,7 +1,7 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2021-06-10"
+date: "2021-09-24"
 output:
   ioslides_presentation:
     widescreen: true
@@ -17,11 +17,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Outline
 
 - Setup
-- What is HPC?
-- Profiling for "hot spots"
+- How to profile code
+    -   Look for "slow" sections
 - Making improvements
 - Single node parallel
+    - Multiple cpus, 1 computer
 - Multi node parallel
+    - Multiple cpus, multiple computers
 
 ## Getting setup
 - Slides are available at https://uschpc.github.io/workshop-hpc-python/   
@@ -38,8 +40,18 @@ knitr::opts_chunk$set(echo = TRUE)
   - viztracer
   - Most available on CARC clusters
 
-## Installing h5py
+## Installing Dependencies
 
+snakeviz (Must run this on local computer)
+```
+pip install snakeviz
+```
+viztracer
+```
+pip install viztracer
+```
+
+h5py (optional)
 ```
 module load usc
 module load python
@@ -47,24 +59,6 @@ module load hdf5
 CC="mpicc" HDF5_MPI="ON" HDF5_DIR=$HDF5_ROOT pip3 install --no-binary=h5py h5py --user
 ```
 
-## What is HPC?
-
-High-performance computing (relative to desktop computers):
-
-- More computing power (cluster of compute nodes)
-- More memory (shared and distributed memory)
-- Ability to scale computations to more compute resources
-- Faster runtimes
-
-
-## General recommendations
-
-- Code first, optimize later (if needed)
-- Profile code to identify bottlenecks
-- Simplify when possible (do less)
-- Vectorize code
-- Parallelize when appropriate
-- Use existing solutions
 
 
 ## Profiling and benchmarking
@@ -84,14 +78,13 @@ High-performance computing (relative to desktop computers):
 
 A few tools:
 
-
 - Profiling
     - cProfile, viztracer to generate profile info
     - snakeviz to display results
     - On CARC systems, download output files to view graphics locally
 - Benchmarking
-    - time (Get start and end time)
     - timeit (Run a function repeatedly to get stats)
+    - time (Get start and end time)
 
 
 ##  Example
@@ -140,16 +133,27 @@ def write_data(x,y,n,t):
 
             np.savetxt(filename,data)
 ```
-## Vectorizing code
 
-- Vectorize code when possible
-  - think about the whole object, not a single element of that object
-  - apply same operation to each element
-- Use vectorized functions that already exist
-  - these functions are typically for loops written in C/C++/Fortran
-- For loops in Python are not necessarily slow, but often not optimized
+## General recommendations
+
+- Code first, optimize later (if needed)
+- Profile code to identify bottlenecks
+- Simplify when possible (do less)
+- Vectorize code
+- Use existing solutions
+- Parallelize when appropriate
 
 
+## Vectorizing code example
+- Packages like numpy often have built-in vectorized versions
+- Apply same operation to each element
+- Often written in C/C++/Fortran
+- Use built in functions when possible
+
+`numpy.meshgrid(*xi, copy=True, sparse=False, indexing='xy')`
+
+>  Return coordinate matrices from coordinate vectors.
+> Make N-D coordinate arrays for vectorized evaluations of N-D scalar/vector fields over N-D grids, given one-dimensional coordinate arrays x1, x2,…, xn.
 
 ## Vectorizing code example
 
@@ -169,16 +173,6 @@ y = np.arange(y_origin-size/2,y_origin+size/2,1)
 X,Y = np.meshgrid(x,y)
 ```
 - See example under `examples/write_vectorized.py`
-
-## Vectorizing code example
-- Packages like numpy often have built-in vectorized versions
-- Use built in functions when possible
-
-`numpy.meshgrid(*xi, copy=True, sparse=False, indexing='xy')`
-
->
->  Return coordinate matrices from coordinate vectors.
-> Make N-D coordinate arrays for vectorized evaluations of N-D scalar/vector fields over N-D grids, given one-dimensional coordinate arrays x1, x2,…, xn.
 
 ## Check performance
 
@@ -258,15 +252,15 @@ New `write_vectorized.py` ~ 1.4s
 
 ## Parallel programming
 
+- Key concept: speedup (decrease in runtime)
+- Parallel programming is easier with one compute node
+    - Using multiple nodes requires more effort
 - "Parallel" can be different things
     - [Data](https://en.wikipedia.org/wiki/Data_parallelism) vs. [task](https://en.wikipedia.org/wiki/Task_parallelism) parallelism
     - "Pleasantly" parallel or "Embarassingly" parallel
         - Concurrent execution of different parts of a larger computation
         - "High throughput computing"
     - Implicit vs. explicit parallel programming
-- Key concept: speedup (decrease in runtime)
-- Parallel programming is easier with one compute node
-    - Using multiple nodes requires more effort
 
 ## Costs of parallelizing
 
@@ -324,8 +318,8 @@ with mp.Pool(processes=nWorkers) as pool:
 
 ## Viztracer Profiling
 - Let's use [Viztracer](https://viztracer.readthedocs.io/en/latest/index.html) to profile
-- `viztracer  --log_multiprocess   examples/write_multiprocessing.py -w 3 -n 100`
-
+- `viztracer  --log_multiprocess -o multiprocessing.html  examples/write_multiprocessing.py -w 3 -n 100`
+- use 'wasd' to navigate
 ```{r,echo=FALSE,out.width="100%"}
 knitr::include_graphics("images/viztracer_overview.png")
 ```
