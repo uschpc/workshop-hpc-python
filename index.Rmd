@@ -285,7 +285,26 @@ New `write_vectorized.py` ~ 1.4s
   - Enter `sinfo2` in shell to see node types
   - 1 logical CPU = 1 core = 1 thread (`--cpus-per-task`)
 
+## Example Slurm job script for multiple cores
 
+```{r,engine='bash',eval=FALSE,highlight=TRUE}
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16GB
+#SBATCH --time=1:00:00
+#SBATCH --account=<account_id>
+
+module purge
+module load gcc/8.3.0
+module load openblas/0.3.8
+module load python/3.7.6
+
+python3 /path/to/script.py
+
+```
 
 ## Conflicts with explicit and implicit parallelism
 
@@ -431,26 +450,6 @@ knitr::include_graphics("images/mpq_large_bench.png")
 
 </div>
 
-## Example Slurm job script for multiple cores
-
-```{r,engine='bash',eval=FALSE,highlight=TRUE}
-#!/bin/bash
-
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=16GB
-#SBATCH --time=1:00:00
-#SBATCH --account=<account_id>
-
-module purge
-module load gcc/8.3.0
-module load openblas/0.3.8
-module load python/3.7.6
-
-python3 /path/to/script.py
-
-```
 
 ## mpi4py
 - [mpi4py](https://mpi4py.readthedocs.io/en/stable/) allows you to add mpi functionality to your scripts
