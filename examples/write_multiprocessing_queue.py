@@ -57,8 +57,7 @@ def set_params(argv):
     return nFiles,size,output, nWorkers
 
 class worker(mp.Process):
-    def __init__(self,task_queue,result_queue,size,output,nFiles,**kwargs):
-    #def __init__(self,task_queue,result_queue,**kwargs):
+    def __init__(self,task_queue,size,output,nFiles,**kwargs):
         super(worker,self).__init__()
         #print("In init(), Process %s starting." %self.pid)
         x_origin=0
@@ -67,7 +66,6 @@ class worker(mp.Process):
         y = np.arange(y_origin-size/2,y_origin+size/2,1)
         self.X,self.Y = np.meshgrid(x,y)
         self.task_queue=task_queue
-        self.result_queue=result_queue
         self.nFiles=nFiles
         self.output=output
 
@@ -75,7 +73,7 @@ class worker(mp.Process):
     def run(self):
 
         print("Starting Process:%d " % self.pid)
-        time.sleep(1)
+        #time.sleep(1)
         while True:
             try:
                 #print("Getting work")
@@ -87,7 +85,6 @@ class worker(mp.Process):
 
             elapsed=write_data(self.X,self.Y,self.output,self.nFiles,i)
             #print("%s is SOO busy with %d" % (self.pid,i) )
-            self.result_queue.put(elapsed)
             self.task_queue.task_done()
         return
 def main(argv):
@@ -108,7 +105,7 @@ def main(argv):
 
     # start workers
     for i in range(0,nWorkers):
-        w=worker(task_queue,result_queue,size,output,nFiles)
+        w=worker(task_queue,size,output,nFiles)
         w.start()
         workers.append(w)
 
@@ -118,25 +115,9 @@ def main(argv):
     for w in workers:
         w.join()
 
-    for i in range(0,nFiles):
-        elapsed[i] = result_queue.get()
-
-
-#    for w in workers:
-#        w.terminate()
-    stats=elapsed*1000
-
-    print("------ Summary statistics ------")
-    print("   Average write time = %1.3f ms" %stats.mean())
-    print("   Std Dev            = %1.3f ms" %stats.std())
-    print("   Min write time     = %1.3f ms" %stats.min())
-    print("   Max write time     = %1.3f ms" %stats.max())
-    print("   Number of writes    = %06d" %nFiles)
-
     return
 
 if __name__=='__main__':
     __spec__ = None
     task_queue = mp.JoinableQueue()
-    result_queue = mp.JoinableQueue()
     main(sys.argv[1:])

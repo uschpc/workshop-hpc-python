@@ -382,13 +382,13 @@ knitr::include_graphics("images/pickle.png")
 ## Multiprocessing Queues
 <div class="columns-2">
 ```{r,echo=FALSE,out.width="100%"}
-knitr::include_graphics("images/cup_queue.png")
+knitr::include_graphics("images/mpq_diagram.png")
 ```
 
 - Use queues and custom process class
 - Each worker process initilized with data
 - Main process adds data to queue
-- Worker process get data from queue saves results to output queue
+- Worker process get data from queue and does work
 </div>
 
 ## Custom process class
@@ -396,40 +396,36 @@ You can find this in `examples/write_multiprocessing_queue.py`
 <div class="columns-2">
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
 class worker(mp.Process):
-    def __init__(self,task_queue,result_queue,
-                size,output,nFiles,**kwargs):
+    def __init__(self,task_queue,size,output,nFiles,**kwargs):
         super(worker,self).__init__()
+        #print("In init(), Process %s starting." %self.pid)
         x_origin=0
         y_origin=500
         x = np.arange(x_origin-size/2,x_origin+size/2,1)
         y = np.arange(y_origin-size/2,y_origin+size/2,1)
         self.X,self.Y = np.meshgrid(x,y)
         self.task_queue=task_queue
-        self.result_queue=result_queue
         self.nFiles=nFiles
         self.output=output
 
 
-
-
-
     def run(self):
 
-        print("Starting Process:%d " % self.pid)
-        time.sleep(1)
-        while True:
-            try:
-                i = self.task_queue.get(timeout=1)
-            except q.Empty:
-                print("No more work to do")
-                break
+    print("Starting Process:%d " % self.pid)
+    time.sleep(1)
+    while True:
+        try:
+            #print("Getting work")
+            i = self.task_queue.get(timeout=1)
+        except q.Empty:
+            print("No more work to do")
+            #self.terminate()
+            break
 
-            elapsed=write_data(self.X,self.Y,
-                               self.output,
-                               self.nFiles,i)
-            self.result_queue.put(elapsed)
-            self.task_queue.task_done()
-        return
+        elapsed=write_data(self.X,self.Y,self.output,self.nFiles,i)
+        #print("%s is SOO busy with %d" % (self.pid,i) )
+        self.task_queue.task_done()
+    return
 ```
 </div>
 
