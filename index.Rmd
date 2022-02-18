@@ -131,7 +131,7 @@ def write_data(x,y,n,t):
         for j in range(j_max):
             data[i,j]=generate_data(x[i],y[j],nFiles,fileID)
 
-            np.savetxt(filename,data)
+    np.savetxt(filename,data)
 ```
 
 ## General recommendations
@@ -462,23 +462,26 @@ knitr::include_graphics("images/mpq_large_bench.png")
 knitr::include_graphics("images/mpi_split.png")
 ```
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
-print("My names is rank %d"%rank+  " and I'm starting...")
-    if rank == 0:
-        data = np.arange(nFiles,dtype='i')
-        recipient=1
-        for chunk in np.array_split(data,n_chunks):
-            recipient=(recipient+1)%world_size
-            if recipient==0:
-                for i in chunk:
-                    write_data(X,Y,output,nFiles,i)
-            else:
-                comm.Send([chunk,MPI.INT], dest=recipient, tag=77)
-    else:
-        data=np.empty(int(nFiles/n_chunks),dtype='i')
-        comm.Recv([data,MPI.INT],source=0, tag=77)
-        data_string=np.array2string(data)
-        for i in data:
-            write_data(X,Y,output,nFiles,i)
+if rank == 0:
+# Summarize params
+    print("My names is rank %d"%rank+  " and I'm starting...")
+    print('world_size= %s' %world_size)
+    print('nFiles=%s' %nFiles)
+    print('output_template=%s%%05d.txt ' %output)
+    print('size=%d' %size)
+    recipient=1
+    data_chunks=np.array_split(data,n_chunks)
+    #print(data_chunks)
+    for chunk in data_chunks[:-1]:
+        comm.Send([chunk,MPI.INT], dest=recipient, tag=77)
+        recipient +=1
+    local_data=data_chunks[n_chunks-1]
+else:
+    local_data=np.empty(int(nFiles/n_chunks),dtype='i')
+    comm.Recv([local_data,MPI.INT],source=0, tag=77)
+for i in local_data:
+    write_data(X,Y,output,nFiles,i)
+
 ```
 </div>
 
