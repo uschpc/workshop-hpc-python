@@ -51,11 +51,10 @@ def main(nFiles,size,output):
     rank = comm.Get_rank()
     world_size  = MPI.COMM_WORLD.Get_size()
 
-    if world_size<= 1:
-        sys.exit("World size must be greater than 1.")
 
-    if nFiles%(world_size-1) != 0:
-        sys.exit("Uneven distribution of workers and work")
+    if nFiles%(world_size) != 0:
+        print("Uneven distribution of workers and work")
+        sys.exit(-1)
 
     # Set XY coords
     x_origin=0
@@ -63,9 +62,14 @@ def main(nFiles,size,output):
     x = np.arange(x_origin-size/2,x_origin+size/2,1)
     y = np.arange(y_origin-size/2,y_origin+size/2,1)
     X,Y = np.meshgrid(x,y)
+    data = np.arange(nFiles,dtype='i')
 
+    if world_size==1:
+        for i in data:
+            write_data(X,Y,output,nFiles,i)
+        sys.exit(0)
 
-    n_chunks   = world_size-1
+    n_chunks   = world_size
 
     if n_chunks==0:
         n_chunks=1
@@ -77,21 +81,23 @@ def main(nFiles,size,output):
         print('nFiles=%s' %nFiles)
         print('output_template=%s%%05d.txt ' %output)
         print('size=%d' %size)
-        data = np.arange(nFiles,dtype='i')
-        recipient=0
-        for chunk in np.array_split(data,n_chunks):
-            recipient=(recipient+1)%world_size
-            if recipient==0:
-                recipient=1
-            data_string=np.array2string(chunk)
+        recipient=1
+        data_chunks=np.array_split(data,n_chunks)
+        print(data_chunks)
+        for chunk in data_chunks[:-1]:
+#            data_string=np.array2string(chunk)
+#            print("Sending to rank %d:\n%s" %(recipient,data_string))
             comm.Send([chunk,MPI.INT], dest=recipient, tag=77)
+            recipient +=1
+        local_data=data_chunks[n_chunks-1]
     else:
-        data=np.empty(int(nFiles/n_chunks),dtype='i')
-        comm.Recv([data,MPI.INT],source=0, tag=77)
-        data_string=np.array2string(data)
-        #print("My names is rank %d"%rank+  " and my data is/are\n"+data_string)
-        for i in data:
-            write_data(X,Y,output,nFiles,i)
+        local_data=np.empty(int(nFiles/n_chunks),dtype='i')
+        comm.Recv([local_data,MPI.INT],source=0, tag=77)
+#        data_string=np.array2string(local_data)
+#        print("My names is rank %d"%rank+  " and my data is/are\n"+data_string)
+
+    for i in local_data:
+        write_data(X,Y,output,nFiles,i)
 
 
 if __name__=='__main__':
