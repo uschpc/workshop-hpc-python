@@ -83,7 +83,7 @@ def main(nFiles,size,output):
         print('size=%d' %size)
         recipient=1
         data_chunks=np.array_split(data,n_chunks)
-        print(data_chunks)
+        #print(data_chunks)
         for chunk in data_chunks[:-1]:
 #            data_string=np.array2string(chunk)
 #            print("Sending to rank %d:\n%s" %(recipient,data_string))
