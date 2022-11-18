@@ -1,7 +1,7 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2021-02-18"
+date: "2022-11-18"
 output:
   ioslides_presentation:
     widescreen: true
@@ -88,6 +88,10 @@ A few tools:
 
 
 ##  Example
+<div class="columns-2">
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/example_viz.png")
+```
 
 - `examples/write.py`
 - Generate some data, write to .txt file
@@ -98,6 +102,8 @@ A few tools:
     - `snakeviz write.log`
 - `python -m cProfile -s tottime write.py -n 100`
     - Generates text output, might need tools to parse
+</div>
+
 
 ## Interpreting results
 
@@ -117,6 +123,7 @@ knitr::include_graphics("images/snakeviz.png")
 
 
 ## Interpreting results
+<div class="columns-2">
 
 This snippet is not great
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
@@ -134,6 +141,19 @@ def write_data(x,y,n,t):
     np.savetxt(filename,data)
 ```
 
+where `generate_data()` is defined as:
+
+```{r,engine='python',eval=FALSE,highlight=TRUE}
+
+def generate_data(x,y,n,t):
+    value = (x/10)**2*(y/10) + (y/10)**2*(x/10)+t/n
+    value = value %1 # Keep number between 0 and 1
+    return value
+```
+- `n` - number files to be generated
+- `t` - which file to generate
+</div>
+
 ## General recommendations
 
 - Code first, optimize later (if needed)
@@ -145,9 +165,10 @@ def write_data(x,y,n,t):
 
 
 ## Vectorizing code example
-- Packages like numpy often have built-in vectorized versions
+
 - Apply same operation to each element
-- Often written in C/C++/Fortran
+- Packages like numpy often have built-in vectorized versions
+- Often written in C/C++/Fortran for performance
 - Use built in functions when possible
 
 `numpy.meshgrid(*xi, copy=True, sparse=False, indexing='xy')`
@@ -252,15 +273,12 @@ New `write_vectorized.py` ~ 1.4s
 
 ## Parallel programming
 
-- Key concept: speedup (decrease in runtime)
-- Parallel programming is easier with one compute node
-    - Using multiple nodes requires more effort
-- "Parallel" can be different things
-    - [Data](https://en.wikipedia.org/wiki/Data_parallelism) vs. [task](https://en.wikipedia.org/wiki/Task_parallelism) parallelism
-    - "Pleasantly" parallel or "Embarassingly" parallel
-        - Concurrent execution of different parts of a larger computation
-        - "High throughput computing"
-    - Implicit vs. explicit parallel programming
+- Generally parallel means concurrent execution of tasks
+- Depends on the needs of your program
+- Doing other tasks while waiting for IO to finish
+- Splitting up workload across "workers" (cpus/compute nodes)
+- Different issues pop up as you scale
+
 
 ## Costs of parallelizing
 
@@ -281,7 +299,7 @@ New `write_vectorized.py` ~ 1.4s
   - number of cores
   - amount of memory
 - On CARC systems:
-  - [Discovery Resource Overview](https://carc.usc.edu/user-information/user-guides/high-performance-computing/discovery-resources)
+  - [Discovery Resource Overview](https://www.carc.usc.edu/user-information/user-guides/hpc-basics/discovery-resources)
   - Enter `sinfo2` in shell to see node types
   - 1 logical CPU = 1 core = 1 thread (`--cpus-per-task`)
 
@@ -298,9 +316,9 @@ New `write_vectorized.py` ~ 1.4s
 #SBATCH --account=<account_id>
 
 module purge
-module load gcc/8.3.0
-module load openblas/0.3.8
-module load python/3.7.6
+module load gcc
+module load openblas
+module load python
 
 python3 /path/to/script.py
 
@@ -309,12 +327,34 @@ python3 /path/to/script.py
 ## Conflicts with explicit and implicit parallelism
 
 - Be careful mixing implicit and explicit parallelism
+    - Explicit: Parallelization that you implement
+    - Implicit: Parallelization from libraries you call
 - Implicit parallel code may use more resources than intended
-- Turn off implicit parallelism with `export OMP_NUM_THREADS=1`
+- Often can turn off implicit parallelism with `export OMP_NUM_THREADS=1`
 
+## Parallelizing our example
 
+- Currently script writes data files in sequence
+- It may be possible to write multiple files at the same time
+
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/serial_write.svg")
+```
+
+## Parallelizing our example
+<div class="columns-2">
+
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/parallel_write.svg")
+```
+
+- If we could write 3 files at once, we should see speedup
+- Our files can be written out of sequence
+- We must somehow evenly distribute work
+
+</div>
 ## Python multiprocessing
-- Multiprocessing is a built in package
+- [Multiprocessing](https://docs.python.org/3/library/multiprocessing.html) is a built-in package
 - Create pool of processes
 - Typical example, apply a function over multiple inputs
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
@@ -337,30 +377,32 @@ with mp.Pool(processes=nWorkers) as pool:
 
 ## Viztracer Profiling
 - Let's use [Viztracer](https://viztracer.readthedocs.io/en/latest/index.html) to profile
-- `viztracer  --log_multiprocess -o multiprocessing.html  examples/write_multiprocessing.py -w 3 -n 100`
+- `viztracer  -o multiprocessing.json  examples/write_multiprocessing.py -w 3 -n 100`
+- `vizviewer  multiprocessig.json`
 - use 'wasd' to navigate
-```{r,echo=FALSE,out.width="100%"}
+
+```{r,echo=FALSE,out.width="75%"}
 knitr::include_graphics("images/viztracer_overview.png")
 ```
 
 
-## Viztracer Profiling
-- For 1 worker, ~0.3 s
+## Viztracer Profiling (1K files)
+- For 1 worker, ~6.7 s
 
-|ncalls|tottime|function|
-|---|---|---|
-|100|0.16|save|
-|101|0.1|recv_bytes|
-|100|0.04|generate_data|
+|ncalls|tottime|tottime/3|function|
+|---|---|---|---|
+|1000|3.1|1.6|io.open|
+|1001|0.9|0.3|**recv_bytes**|
+|1000|0.48|0.16|generate_data|
 
-- For 3 workers, ~0.3 s
+- For 3 workers, ~7.6 s
 
-|ncalls|tottime|filename:lineno(function)|
-|---|---|---|
-|203|0.39|__enter__|
-|103|0.4|recv_bytes|
-|100|0.04|generate_data|
-|100|0.22|save|
+|ncalls|tottime|tottime (per worker)|function|
+|---|---|---|---|
+|2003|8.2|2.7|**__enter__**|
+|1000|3.6|1.9|io.open|
+|1003|7.2|2.5|**recv_bytes**|
+|1000|0.6|.2|generate_data|
 
 ## Multiprocessing
 - Despite more workers, no speedup
@@ -429,7 +471,54 @@ class worker(mp.Process):
 ```
 </div>
 
-## Multiprocessing queue benchmarks
+## Multiprocessing queue profile (1K files)
+- For 1 worker, ~5.4 s
+
+|ncalls|tottime|tottime/3|function|
+|---|---|---|---|
+|1000|2.3|0.8|`io.open`|
+|1000|0.5|0.17|`generate_data`|
+|1000|0.03|0.01|`recv_bytes`|
+
+- For 3 workers, ~2.8 s
+
+|ncalls|tottime|tottime (per worker)|function|
+|---|---|---|---|
+|1003|2.4|0.8|`io.open`|
+|1000|0.5|0.17|`generate_data`|
+|1000|0.03|0.01|`recv_byte`|
+|2001|0.001|~0|`__enter__`|
+## Check performance
+
+- `examples/write_multiprocessing,py` 3 workers, ~7.6 s
+
+|ncalls|tottime|tottime (per worker)|function|
+|---|---|---|---|
+|2003|8.2|2.7|**__enter__**|
+|1003|7.2|2.5|**recv_bytes**|
+|1000|3.6|1.9|io.open|
+|1000|0.6|.2|generate_data|
+
+- `examples/write_multiprocessing_queue.py` 3 workers, ~2.8 s
+
+|ncalls|tottime|tottime (per worker)|function|
+|---|---|---|---|
+|2001|0.001|~0|`__enter__`|
+|1000|0.03|0.01|`recv_byte`|
+|1003|2.4|0.8|`io.open`|
+|1000|0.5|0.17|`generate_data`|
+
+## Worker Coordination
+
+- Workers communicate fairly quickly now
+- Uneven distribution of work
+- Workers are poorly coordinated
+
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/multiprocessing_queue_coordination.png")
+```
+
+## Multiprocessing queue benchmarks (100 files)
 <div class="columns-2">
 ```{r,echo=FALSE,out.width="100%"}
 knitr::include_graphics("images/mpq_small_bench.png")
@@ -445,6 +534,10 @@ knitr::include_graphics("images/mpq_large_bench.png")
 - Consider complexity code vs scalability. Was it worth it?
 
 </div>
+
+
+
+
 
 
 ## mpi4py

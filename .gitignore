@@ -5,3 +5,5 @@ profile_data
 images/*.svg
 images/*.nb
 .Rproj.user
+*.html
+*.json

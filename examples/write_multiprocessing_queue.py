@@ -73,11 +73,11 @@ class worker(mp.Process):
     def run(self):
 
         print("Starting Process:%d " % self.pid)
-        #time.sleep(1)
+        #time.sleep(0.1)
         while True:
             try:
                 #print("Getting work")
-                i = self.task_queue.get(timeout=1)
+                i = self.task_queue.get(timeout=0.1)
             except q.Empty:
                 print("No more work to do")
                 #self.terminate()
