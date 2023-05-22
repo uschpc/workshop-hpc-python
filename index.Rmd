@@ -1,7 +1,7 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2022-11-18"
+date: "2023-05-22"
 output:
   ioslides_presentation:
     widescreen: true
@@ -41,35 +41,40 @@ knitr::opts_chunk$set(echo = TRUE)
   - Most available on CARC clusters
 
 ## Installing Dependencies
+- Easiest to do from conda environment
+- From Discovery/Endeavour cluster initialize conda with
 
-snakeviz (Must run this on local computer)
+```{r,engine='bash',eval=FALSE}
+module purge
+module load conda
+eval "$(conda shell.bash hook)"
 ```
+
+- Initialize environment
+```{r,engine='bash',eval=FALSE}
+conda create -n hpc-python
+conda activate hpc-python
+# mamba is an alternative to conda for installing packages
+# resolves 'solving for environment' timeout
+mamba install "h5py>=2.9=mpi*"
 pip install snakeviz
-```
-viztracer
-```
 pip install viztracer
-```
 
-h5py (optional)
 ```
-module load usc
-module load python
-module load hdf5
-CC="mpicc" HDF5_MPI="ON" HDF5_DIR=$HDF5_ROOT pip3 install --no-binary=h5py h5py --user
-```
-
 
 
 ## Profiling and benchmarking
 
-- Aim for *fast enough* code  
-- Compute time is less expensive than human time
 
 1. Profile code to understand the execution time and memory use of each part
 2. Identify bottlenecks (i.e., parts of code that take the most time)
 3. Try to improve performance of bottlenecks by modifying code
 4. Benchmark alternative code to identify best alternative
+
+### Eventually you need to stop
+
+- Aim for *fast enough* code  
+- Compute time is less expensive than human time
 
 
 
@@ -81,7 +86,6 @@ A few tools:
 - Profiling
     - cProfile, viztracer to generate profile info
     - snakeviz to display results
-    - On CARC systems, download output files to view graphics locally
 - Benchmarking
     - timeit (Run a function repeatedly to get stats)
     - time (Get start and end time)
@@ -123,7 +127,6 @@ knitr::include_graphics("images/snakeviz.png")
 
 
 ## Interpreting results
-<div class="columns-2">
 
 This snippet is not great
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
@@ -144,15 +147,14 @@ def write_data(x,y,n,t):
 where `generate_data()` is defined as:
 
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
-
 def generate_data(x,y,n,t):
     value = (x/10)**2*(y/10) + (y/10)**2*(x/10)+t/n
     value = value %1 # Keep number between 0 and 1
     return value
 ```
+
 - `n` - number files to be generated
 - `t` - which file to generate
-</div>
 
 ## General recommendations
 
@@ -293,44 +295,6 @@ New `write_vectorized.py` ~ 1.4s
   - depends on specific computations
   - experiment to find
 
-## Hardware configuration
-
-- Compute nodes have different configurations
-  - number of cores
-  - amount of memory
-- On CARC systems:
-  - [Discovery Resource Overview](https://www.carc.usc.edu/user-information/user-guides/hpc-basics/discovery-resources)
-  - Enter `sinfo2` in shell to see node types
-  - 1 logical CPU = 1 core = 1 thread (`--cpus-per-task`)
-
-## Example Slurm job script for multiple cores
-
-```{r,engine='bash',eval=FALSE,highlight=TRUE}
-#!/bin/bash
-
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=16GB
-#SBATCH --time=1:00:00
-#SBATCH --account=<account_id>
-
-module purge
-module load gcc
-module load openblas
-module load python
-
-python3 /path/to/script.py
-
-```
-
-## Conflicts with explicit and implicit parallelism
-
-- Be careful mixing implicit and explicit parallelism
-    - Explicit: Parallelization that you implement
-    - Implicit: Parallelization from libraries you call
-- Implicit parallel code may use more resources than intended
-- Often can turn off implicit parallelism with `export OMP_NUM_THREADS=1`
 
 ## Parallelizing our example
 
@@ -345,7 +309,7 @@ knitr::include_graphics("images/serial_write.svg")
 <div class="columns-2">
 
 ```{r,echo=FALSE,out.width="100%"}
-knitr::include_graphics("images/parallel_write.svg")
+knitr::include_graphics("images/parallel_write.png")
 ```
 
 - If we could write 3 files at once, we should see speedup
@@ -374,6 +338,41 @@ with mp.Pool(processes=nWorkers) as pool:
 ```
 - Also add `-w` option for `nWorkers`
 - See example under `examples/write_multiprocessing.py`
+
+## Hardware configuration
+
+- Compute nodes have different configurations
+  - number of cores
+  - amount of memory
+- On CARC systems:
+  - [Discovery Resource Overview](https://www.carc.usc.edu/user-information/user-guides/hpc-basics/discovery-resources)
+  - Enter `sinfo2` in shell to see node types
+  - 1 logical CPU = 1 core = 1 thread (`--cpus-per-task`)
+
+## Example Slurm job script for multiple cores
+
+```{r,engine='bash',eval=FALSE,highlight=TRUE}
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16GB
+#SBATCH --time=1:00:00
+#SBATCH --account=<account_id>
+
+module purge
+module load conda
+eval "$(conda shell.bash hook)"
+conda activate hpc-python
+
+python3 /path/to/script.py
+
+```
+- We can launch our script with something like  `python3 write_multiprocessing.py -w 3 -n 100`
+- Check example job script
+  - `examples/job-scripts/multicore.job`
+
 
 ## Viztracer Profiling
 - Let's use [Viztracer](https://viztracer.readthedocs.io/en/latest/index.html) to profile
@@ -404,7 +403,7 @@ knitr::include_graphics("images/viztracer_overview.png")
 |1003|7.2|2.5|**recv_bytes**|
 |1000|0.6|.2|generate_data|
 
-## Multiprocessing
+## Communication Overhead
 - Despite more workers, no speedup
 - There is communication overhead
 - This line is problematic:
@@ -438,34 +437,34 @@ You can find this in `examples/write_multiprocessing_queue.py`
 <div class="columns-2">
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
 class worker(mp.Process):
+    ## Initialize static proccess data
     def __init__(self,task_queue,size,output,nFiles,**kwargs):
         super(worker,self).__init__()
-        #print("In init(), Process %s starting." %self.pid)
         x_origin=0
         y_origin=500
         x = np.arange(x_origin-size/2,x_origin+size/2,1)
         y = np.arange(y_origin-size/2,y_origin+size/2,1)
+
         self.X,self.Y = np.meshgrid(x,y)
-        self.task_queue=task_queue
         self.nFiles=nFiles
         self.output=output
+        # Where to get work from
+        self.task_queue=task_queue
 
 
+    # Define work each process does
     def run(self):
-
     print("Starting Process:%d " % self.pid)
     time.sleep(1)
     while True:
         try:
-            #print("Getting work")
             i = self.task_queue.get(timeout=1)
         except q.Empty:
             print("No more work to do")
             #self.terminate()
             break
 
-        elapsed=write_data(self.X,self.Y,self.output,self.nFiles,i)
-        #print("%s is SOO busy with %d" % (self.pid,i) )
+        write_data(self.X,self.Y,self.output,self.nFiles,i)
         self.task_queue.task_done()
     return
 ```
@@ -490,21 +489,21 @@ class worker(mp.Process):
 |2001|0.001|~0|`__enter__`|
 ## Check performance
 
-- `examples/write_multiprocessing,py` 3 workers, ~7.6 s
+- `examples/write_multiprocessing.py` 3 workers, ~7.6 s
 
 |ncalls|tottime|tottime (per worker)|function|
 |---|---|---|---|
-|2003|8.2|2.7|**__enter__**|
-|1003|7.2|2.5|**recv_bytes**|
-|1000|3.6|1.9|io.open|
-|1000|0.6|.2|generate_data|
+|2003|8.2|2.7|**`__enter__`**|
+|1003|7.2|2.5|**`recv_bytes`**|
+|1000|3.6|1.9|`io.open`|
+|1000|0.6|.2|`generate_data`|
 
 - `examples/write_multiprocessing_queue.py` 3 workers, ~2.8 s
 
 |ncalls|tottime|tottime (per worker)|function|
 |---|---|---|---|
-|2001|0.001|~0|`__enter__`|
-|1000|0.03|0.01|`recv_byte`|
+|2001|0.001|~0|**`__enter__`**|
+|1000|0.03|0.01|**`recv_byte`**|
 |1003|2.4|0.8|`io.open`|
 |1000|0.5|0.17|`generate_data`|
 
@@ -512,10 +511,20 @@ class worker(mp.Process):
 
 - Workers communicate fairly quickly now
 - Uneven distribution of work
-- Workers are poorly coordinated
+- Program ends when LAST worker completes
 
 ```{r,echo=FALSE,out.width="100%"}
 knitr::include_graphics("images/multiprocessing_queue_coordination.png")
+```
+
+## Worker Coordination
+
+- Larger files 500x500, 1K files
+- As problem size increases, start up overhead is less important
+- Workload is more even
+
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/multiprocessing_queue_coordination_better.png")
 ```
 
 ## Multiprocessing queue benchmarks (100 files)
@@ -527,15 +536,13 @@ knitr::include_graphics("images/mpq_small_bench.png")
 knitr::include_graphics("images/mpq_large_bench.png")
 ```
 
-- This "works" but scales badly
+- This scales badly for small workloads
     - Dashed line represents linear scaling
-- Increasing the problem size helps a little
+- Increasing the problem size helps
     - Start up overhead vs overall problem size decreases
 - Consider complexity code vs scalability. Was it worth it?
 
 </div>
-
-
 
 
 
@@ -554,6 +561,9 @@ knitr::include_graphics("images/mpq_large_bench.png")
 ```{r,echo=FALSE,out.width="100%"}
 knitr::include_graphics("images/mpi_split.png")
 ```
+
+- Two parts rank-0 and rank-everything else
+- Rank 0
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
 if rank == 0:
 # Summarize params
@@ -569,34 +579,59 @@ if rank == 0:
         comm.Send([chunk,MPI.INT], dest=recipient, tag=77)
         recipient +=1
     local_data=data_chunks[n_chunks-1]
+```
+- Divide data into chunks and distribute to workers
+</div>
+
+## mpi4py example
+- For all other workers, receive data into local buffer
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 else:
     local_data=np.empty(int(nFiles/n_chunks),dtype='i')
     comm.Recv([local_data,MPI.INT],source=0, tag=77)
+```
+
+- Once data is distributed, everyone should process it
+
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 for i in local_data:
     write_data(X,Y,output,nFiles,i)
 
 ```
-</div>
+## Example Slurm job script for MPI job
 
+```{r,engine='bash',eval=FALSE,highlight=TRUE}
+#!/bin/bash
+
+#SBATCH --ntasks=16
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=3GB
+#SBATCH --time=1:00:00
+#SBATCH --account=<account_id>
+
+module purge
+module load gcc/8.3.0
+module load openblas/0.3.8
+module load openmpi/4.0.2
+module load pmix/3.1.3
+module load python/3.7.6
+
+srun --mpi=pmix_v2 python3 /path/to/script.py
+```
+- We can launch our script with something like  `srun --mpi=pmix_v2 python3 write_mpi.py -n 100`
+- Check example job script
+  - `examples/job-scripts/mpi.job`
 ## mpi4py example
 <div class="columns-2">
 ```{r,echo=FALSE,out.width="100%"}
 knitr::include_graphics("images/mpi_bench.png")
 ```
 
-
-
-
 ```
 
 
 
-
-
-
-
 ```
-
 - Pros
     - Just by using `comm.Send` and `com.Recv` we can create our own work load manager
     - We get to use `cProflie` and `pdb` again
@@ -605,8 +640,10 @@ knitr::include_graphics("images/mpi_bench.png")
 - Cons
     - Basic workload distrubtion
     - To debug/profile we need to look at N files/processes
+<!---
     - **Not that much faster**
     - MPI communication slower than multiprocessing queues
+--->
 </div>
 
 ## MPI Scatter
@@ -618,7 +655,7 @@ knitr::include_graphics("images/mpi_bench_scatter.png")
 
 - `mpi4py` has a few convenience functions for common tasks
 - `comm.Scatter` will share data to every worker
-- Check for pre-built solutions
+- Optimized data transfers to every worker
 
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
 print("My names is rank %d"%rank+  " and I'm starting...")
@@ -629,7 +666,7 @@ if rank == 0:
     chunks = data.reshape((n_chunks,int(nFiles/n_chunks)))
 
 recvbuf = np.empty(int(nFiles/n_chunks),dtype='i')
-
+y
 comm.Scatter(chunks,recvbuf,root=0)
 
 for i in recvbuf:
@@ -640,7 +677,7 @@ for i in recvbuf:
 
 </div>
 
-## Parallel IO
+## High Performance IO
 
 - In some cases file operations are a bottleneck
 - We saw in one example ~ 40% of time was waiting to open a file
@@ -648,12 +685,24 @@ for i in recvbuf:
 - Libraries like hdf5, h5py allow multiple processes to write to same file
 - Parallelization not needed for speedup
 
+## HDF5
+
+- HDF5 provides a way to store complicated datasets
+- Instead of putting metadata in filename, HDF5 can manage it for you
+- We will use very basic HDF5 features.
+- We will save all of our files into 1 HDF5 file.
+
+```{r,echo=FALSE,out.width="35%"}
+knitr::include_graphics("images/h5_single_file.png")
+```
+
 ## h5py
 
-- In `examples/write_vectorized_binary.py` we can modifying `write_data`
+- We can access HDF5 functionality from h5py python library
+- In `examples/write_vectorized_binary.py` we can modifying `write_data()`
 - See `examples/write_hdf5.py`
 
-```
+```{r,engine='python',eval=FALSE,highlight=TRUE}
 def write_data(X,Y,output,nFiles,i,hf):
 
     filename=("output/%s%05d" %(output,i))
@@ -685,40 +734,54 @@ def write_data(X,Y,output,nFiles,i,hf):
 |778|0.235|0.000|0.235|0.000|{built-in method posix.stat}|
 |1000|0.211|0.000|0.242|0.000|dataset.py:38(make_new_dset)|
 
+## h5py vs multiple files
+<div class="columns-2">
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/vb_vs_h5py.png")
+```
+
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/h5_speedup.png")
+```
+
+</div>
+
+
+- Using h5py is always faster
+- Performance benefit goes down
+- Operating system optimizations?
+
 ## Parallel IO with h5py
+<div class="columns-2">
+```{r,echo=FALSE,out.width="100%"}
+knitr::include_graphics("images/h5_single_file_parallel.png")
+```
+
 - See `examples/write_final.py`
-- set `hf=h5py.File('output/data.hdf5','w',driver='mpio',comm=comm)`
+- set `hf=h5py.File('output/data.hdf5',
+'w',driver='mpio',comm=comm)`
 - Use same `write_data` function as single core version
 - Reading data is a bit harder
     -   Use filename 'data00123' as 'key' h5py will return dataset
 
+</div>
 
 
-## Example Slurm job script for MPI job
+## MPI+HDF5 Speedup?
 
-```{r,engine='bash',eval=FALSE,highlight=TRUE}
-#!/bin/bash
 
-#SBATCH --ntasks=16
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=3GB
-#SBATCH --time=1:00:00
-#SBATCH --account=<account_id>
-
-module purge
-module load gcc/8.3.0
-module load openblas/0.3.8
-module load openmpi/4.0.2
-module load pmix/3.1.3
-module load python/3.7.6
-
-srun --mpi=pmix_v2 python3 /path/to/script.py
+```{r,echo=FALSE,out.width="75%"}
+knitr::include_graphics("images/parallel_h5py_vs_mpi.png")
 ```
 
+- It's a bit faster
+- Additional code not much more complicated
+- Environment is much more complicated
+- Probably not worth the effort?
 
 ## Additional resources
 
-- [multiprocessig](https://cran.r-project.org/manuals.html)
+- [multiprocesing](https://cran.r-project.org/manuals.html)
 - [mpi4py](https://cran.r-b.org/web/views/HighPerformanceComputing.html)  
 - [h5py](https://pbdr.org/)
 - [hdf5](https://pbdr.org/)

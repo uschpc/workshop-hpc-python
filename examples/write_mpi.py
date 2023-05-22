@@ -1,7 +1,7 @@
-#!/usr/local/bin/python3
 import numpy as np
 import multiprocessing as mp
 import time, sys, getopt, os, io, cProfile
+import cProfile
 from mpi4py import MPI
 
 def generate_data(x,y,n,t):
@@ -45,60 +45,54 @@ def set_params(argv):
     return nFiles,size,output,debug
 
 
-def main(nFiles,size,output):
-    os.makedirs("output",exist_ok='True')
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    world_size  = MPI.COMM_WORLD.Get_size()
+def main(nFiles,size,output,comm,rank,world_size):
 
+        if nFiles%(world_size) != 0:
+            print("Uneven distribution of workers and work")
+            sys.exit(-1)
 
-    if nFiles%(world_size) != 0:
-        print("Uneven distribution of workers and work")
-        sys.exit(-1)
+            # Set XY coords
+            x_origin=0
+            y_origin=500
+            x = np.arange(x_origin-size/2,x_origin+size/2,1)
+            y = np.arange(y_origin-size/2,y_origin+size/2,1)
+            X,Y = np.meshgrid(x,y)
+            data = np.arange(nFiles,dtype='i')
 
-    # Set XY coords
-    x_origin=0
-    y_origin=500
-    x = np.arange(x_origin-size/2,x_origin+size/2,1)
-    y = np.arange(y_origin-size/2,y_origin+size/2,1)
-    X,Y = np.meshgrid(x,y)
-    data = np.arange(nFiles,dtype='i')
+            if world_size==1:
+                for i in data:
+                    write_data(X,Y,output,nFiles,i)
+                    sys.exit(0)
 
-    if world_size==1:
-        for i in data:
-            write_data(X,Y,output,nFiles,i)
-        sys.exit(0)
+                    n_chunks   = world_size
 
-    n_chunks   = world_size
+                    if n_chunks==0:
+                        n_chunks=1
 
-    if n_chunks==0:
-        n_chunks=1
+                        if rank == 0:
+                            # Summarize params
+                            print("My names is rank %d"%rank+  " and I'm starting...")
+                            print('world_size= %s' %world_size)
+                            print('nFiles=%s' %nFiles)
+                            print('output_template=%s%%05d.txt ' %output)
+                            print('size=%d' %size)
+                            recipient=1
+                            data_chunks=np.array_split(data,n_chunks)
+                            #print(data_chunks)
+                            for chunk in data_chunks[:-1]:
+                                #            data_string=np.array2string(chunk)
+                                #            print("Sending to rank %d:\n%s" %(recipient,data_string))
+                                comm.Send([chunk,MPI.INT], dest=recipient, tag=77)
+                                recipient +=1
+                                local_data=data_chunks[n_chunks-1]
+                            else:
+                                local_data=np.empty(int(nFiles/n_chunks),dtype='i')
+                                comm.Recv([local_data,MPI.INT],source=0, tag=77)
+                                #        data_string=np.array2string(local_data)
+                                #        print("My names is rank %d"%rank+  " and my data is/are\n"+data_string)
 
-    if rank == 0:
- # Summarize params
-        print("My names is rank %d"%rank+  " and I'm starting...")
-        print('world_size= %s' %world_size)
-        print('nFiles=%s' %nFiles)
-        print('output_template=%s%%05d.txt ' %output)
-        print('size=%d' %size)
-        recipient=1
-        data_chunks=np.array_split(data,n_chunks)
-        #print(data_chunks)
-        for chunk in data_chunks[:-1]:
-#            data_string=np.array2string(chunk)
-#            print("Sending to rank %d:\n%s" %(recipient,data_string))
-            comm.Send([chunk,MPI.INT], dest=recipient, tag=77)
-            recipient +=1
-        local_data=data_chunks[n_chunks-1]
-    else:
-        local_data=np.empty(int(nFiles/n_chunks),dtype='i')
-        comm.Recv([local_data,MPI.INT],source=0, tag=77)
-#        data_string=np.array2string(local_data)
-#        print("My names is rank %d"%rank+  " and my data is/are\n"+data_string)
-
-    for i in local_data:
-        write_data(X,Y,output,nFiles,i)
-
+                                for i in local_data:
+                                    write_data(X,Y,output,nFiles,i)
 
 if __name__=='__main__':
     nFiles,size,output,debug = set_params(sys.argv[1:])
@@ -120,4 +114,14 @@ if __name__=='__main__':
 
 
     else:
-        main(nFiles,size,output)
+        os.makedirs("output",  exist_ok='True')
+        os.makedirs("profile", exist_ok='True')
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        world_size  = MPI.COMM_WORLD.Get_size()
+        with cProfile.Profile() as pr:
+            pr.enable()
+            #    VizTracer(output_file=f"profile/viz_trace_mpi_{rank:02d}.json") as tracer:
+            pr.runctx(main,locals={nFiles,size,output,comm,rank,world_size})
+            pr.disable()
+            pr.dump_stats(f"profile/cprofile_mpi_{rank:02d}")

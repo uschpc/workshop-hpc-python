@@ -1,4 +1,3 @@
-#!/usr/local/bin/python3
 import numpy as np
 import multiprocessing as mp
 import queue as q
@@ -109,10 +108,11 @@ def main(argv):
         w.start()
         workers.append(w)
 
-    print("Waiting for work to complete...")
+    print("\nWaiting for work to complete...\n")
     task_queue.join()
 
     for w in workers:
+        print(f"Closing worker {w}")
         w.join()
 
     return

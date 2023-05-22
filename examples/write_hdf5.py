@@ -1,4 +1,3 @@
-#!/usr/local/bin/python3
 import numpy as np
 import multiprocessing as mp
 import time, sys, getopt, os, io
@@ -53,7 +52,7 @@ def set_params(argv):
 def main(argv):
 
     nFiles,size,output,nWorkers = set_params(argv)
-    hf = h5py.File('output/data.h5', 'w')
+    hf = h5py.File('output/%s.h5'%output, 'w')
 
     # Set XY coords
     x_origin=0
