@@ -793,4 +793,4 @@ knitr::include_graphics("images/parallel_h5py_vs_mpi.png")
 
 - Questions?
   - carc-support@usc.edu
-- [Workshop schedule](https://carc.usc.edu/news-and-events/events)
+- [Workshop schedule](https://www.carc.usc.edu/education-and-resources/workshops)
