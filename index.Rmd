@@ -1,7 +1,7 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2023-05-22"
+date: "2023-06-30"
 output:
   ioslides_presentation:
     widescreen: true
@@ -11,6 +11,7 @@ output:
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::knit_engines$set(python=reticulate::eng_python)
 ```
 
 
@@ -251,7 +252,7 @@ New `write_vectorized.py` ~ 1.4s
 ## Parallelization drawback
 
 - Some computations are not worth parallelizing
-- Some costs to palatalizing (overhead):
+- Some costs to parallelizing (overhead):
   - changing code
   - spawning child processes
   - communications
