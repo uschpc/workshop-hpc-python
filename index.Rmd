@@ -25,22 +25,11 @@ knitr::opts_chunk$set(echo = TRUE)
 - Multi node parallel
     - Multiple cpus, multiple computers
 
-## Getting setup
-- Slides are available at https://uschpc.github.io/workshop-hpc-python/   
-- `git clone https://github.com/uschpc/workshop-hpc-python.git`
-- Open `index.html` in browser
-- examples in `examples`
-- Requirements:
-  - python3
-  - mpi implementation
-    - mpi4py
-  - hdf5
-    - h5py (MPI parallel enabled)
-  - snakeviz
-  - viztracer
-  - Most available on CARC clusters
-
 ## Installing Dependencies
+Get presentation materials
+```{r,engine='bash',eval=FALSE}
+git clone https://github.com/uschpc/workshop-hpc-python.git
+```
 - Easiest to do from conda environment
 - From Discovery/Endeavour cluster initialize conda with
 
@@ -63,7 +52,7 @@ pip install viztracer
 ```
 
 
-## Profiling and benchmarking
+## Profiling & Benchmarking
 
 
 1. Profile code to understand the execution time and memory use of each part
@@ -77,20 +66,6 @@ pip install viztracer
 - Compute time is less expensive than human time
 
 
-
-
-## Profiling & Benchmarking
-
-A few tools:
-
-- Profiling
-    - cProfile, viztracer to generate profile info
-    - snakeviz to display results
-- Benchmarking
-    - timeit (Run a function repeatedly to get stats)
-    - time (Get start and end time)
-
-
 ##  Example
 <div class="columns-2">
 ```{r,echo=FALSE,out.width="100%"}
@@ -100,12 +75,13 @@ knitr::include_graphics("images/example_viz.png")
 - `examples/write.py`
 - Generate some data, write to .txt file
 - Let's measure performance for baseline
+- `python -m cProfile -s tottime write.py -n 100`
+    - Generates text output, might need tools to parse
 - `python -m cProfile -o write.log examples/write.py -n 100`
     - Write 100 files
     - Generates binary file, need utility to view
     - `snakeviz write.log`
-- `python -m cProfile -s tottime write.py -n 100`
-    - Generates text output, might need tools to parse
+
 </div>
 
 
@@ -156,18 +132,10 @@ def generate_data(x,y,n,t):
 - `n` - number files to be generated
 - `t` - which file to generate
 
-## General recommendations
 
-- Code first, optimize later (if needed)
-- Profile code to identify bottlenecks
-- Simplify when possible (do less)
-- Vectorize code
-- Use existing solutions
-- Parallelize when appropriate
+## Vectorizing code
 
-
-## Vectorizing code example
-
+- Loops in Python tend to be slow
 - Apply same operation to each element
 - Packages like numpy often have built-in vectorized versions
 - Often written in C/C++/Fortran for performance
@@ -178,9 +146,8 @@ def generate_data(x,y,n,t):
 >  Return coordinate matrices from coordinate vectors.
 > Make N-D coordinate arrays for vectorized evaluations of N-D scalar/vector fields over N-D grids, given one-dimensional coordinate arrays x1, x2,…, xn.
 
-## Vectorizing code example
+## Vectorizing code
 
-- Usually if you're implementing a loop there's a faster way
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
 def write_data(X,Y,n,t):
     filename=("output/%s%05d" %(output,i))
@@ -279,21 +246,20 @@ New `write_vectorized.py` ~ 1.4s
 - Depends on the needs of your program
 - Doing other tasks while waiting for IO to finish
 - Splitting up workload across "workers" (cpus/compute nodes)
-- Different issues pop up as you scale
 
 
-## Costs of parallelizing
+## Parallelization drawback
 
 - Some computations are not worth parallelizing
-- Some costs to parallelizing (overhead):
+- Some costs to palatalizing (overhead):
   - changing code
   - spawning child processes
-  - copying data and environment
   - communications
 - Speedup not proportional to number of cores (Amdahl's law)
 - Optimal number of cores
   - depends on specific computations
   - experiment to find
+- Different issues pop up as you scale
 
 
 ## Parallelizing our example
@@ -598,6 +564,8 @@ for i in local_data:
     write_data(X,Y,output,nFiles,i)
 
 ```
+
+
 ## Example Slurm job script for MPI job
 
 ```{r,engine='bash',eval=FALSE,highlight=TRUE}
@@ -618,32 +586,34 @@ module load python/3.7.6
 
 srun --mpi=pmix_v2 python3 /path/to/script.py
 ```
-- We can launch our script with something like  `srun --mpi=pmix_v2 python3 write_mpi.py -n 100`
+
+- We can launch our script with something like  `srun --mpi=pmix_v2 python3 write_mpi.py -n 
+100`
 - Check example job script
   - `examples/job-scripts/mpi.job`
+
 ## mpi4py example
+
 <div class="columns-2">
+
 ```{r,echo=FALSE,out.width="100%"}
 knitr::include_graphics("images/mpi_bench.png")
-```
 
 ```
 
+```
 
 
 ```
+
 - Pros
     - Just by using `comm.Send` and `com.Recv` we can create our own work load manager
     - We get to use `cProflie` and `pdb` again
     - Code is easier to understand
     - Easier to scale up
 - Cons
-    - Basic workload distrubtion
+    - Basic workload distribution
     - To debug/profile we need to look at N files/processes
-<!---
-    - **Not that much faster**
-    - MPI communication slower than multiprocessing queues
---->
 </div>
 
 ## MPI Scatter
@@ -657,23 +627,31 @@ knitr::include_graphics("images/mpi_bench_scatter.png")
 - `comm.Scatter` will share data to every worker
 - Optimized data transfers to every worker
 
+
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
 print("My names is rank %d"%rank+  " and I'm starting...")
+
 chunks=None
+
 if rank == 0:
     # Send pieces of data from rank 0 to whole world
     data   = np.arange(nFiles,dtype='i')
     chunks = data.reshape((n_chunks,int(nFiles/n_chunks)))
 
 recvbuf = np.empty(int(nFiles/n_chunks),dtype='i')
-y
 comm.Scatter(chunks,recvbuf,root=0)
+
 
 for i in recvbuf:
     #print("writing ...", i)
     write_data(X,Y,output,nFiles,i)
+    
+    
 
 ```
+
+
+
 
 </div>
 
