@@ -1,7 +1,7 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2023-03-01"
+date: "2024-03-01"
 output:
   ioslides_presentation:
     widescreen: true
