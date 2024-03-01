@@ -1,7 +1,7 @@
 ---
 title: "High-Performance Computing with Python"
 author: "Cesar Sul <br> csul[at]usc.edu <br> Research Computing Associate <br> CARC at USC"
-date: "2023-06-30"
+date: "2023-03-01"
 output:
   ioslides_presentation:
     widescreen: true
@@ -42,14 +42,7 @@ eval "$(conda shell.bash hook)"
 
 - Initialize environment
 ```{r,engine='bash',eval=FALSE}
-conda create -n hpc-python
-conda activate hpc-python
-# mamba is an alternative to conda for installing packages
-# resolves 'solving for environment' timeout
-mamba install "h5py>=2.9=mpi*"
-pip install snakeviz
-pip install viztracer
-
+conda env create -f environment.yml
 ```
 
 
@@ -393,8 +386,7 @@ knitr::include_graphics("images/pickle.png")
 knitr::include_graphics("images/mpq_diagram.png")
 ```
 
-- Use queues and custom process class
-- Each worker process initilized with data
+- Use queues and custom process class - Each worker process initilized with data
 - Main process adds data to queue
 - Worker process get data from queue and does work
 </div>
@@ -405,7 +397,8 @@ You can find this in `examples/write_multiprocessing_queue.py`
 ```{r,engine='python',eval=FALSE,highlight=TRUE}
 class worker(mp.Process):
     ## Initialize static proccess data
-    def __init__(self,task_queue,size,output,nFiles,**kwargs):
+    def __init__(self,task_queue,size,
+    output,nFiles,**kwargs):
         super(worker,self).__init__()
         x_origin=0
         y_origin=500
@@ -437,6 +430,30 @@ class worker(mp.Process):
 ```
 </div>
 
+## Populate the Queue
+You can find this in `examples/write_multiprocessing_queue.py`
+<div class="columns-2">
+```{r,engine='python',eval=FALSE,highlight=TRUE}
+  task_queue = mp.JoinableQueue()
+
+  # Create work
+    for i in range(0,nFiles):
+        task_queue.put(i)
+
+    # start workers
+    for i in range(0,nWorkers):
+        w=worker(task_queue,size,output,nFiles)
+        w.start()
+        workers.append(w)
+
+    print("\nWaiting for work to complete...\n")
+    task_queue.join()
+
+    for w in workers:
+        print(f"Closing worker {w}")
+        w.join()
+```
+</div>
 ## Multiprocessing queue profile (1K files)
 - For 1 worker, ~5.4 s
 
@@ -514,7 +531,7 @@ knitr::include_graphics("images/mpq_large_bench.png")
 
 
 
-## mpi4py
+## Multi-node Parallalization
 - [mpi4py](https://mpi4py.readthedocs.io/en/stable/) allows you to add mpi functionality to your scripts
 - Send messages across compute nodes
 - Easier to scale up
