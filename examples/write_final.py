@@ -15,7 +15,9 @@ def write_data(X,Y,output,nFiles,i,hf):
     filename=("output/%s%05d" %(output,i))
     Z = generate_data(X,Y,nFiles,i)
 
-    hf.create_dataset(filename,data=Z)
+    group=hf.create_group('data{i}')
+    #hf.create_dataset(filename,data=Z)
+    group.create_dataset(filename,data=Z)
 
 
 def set_params(argv):
@@ -50,6 +52,8 @@ def main(nFiles,size,output):
     os.makedirs("output",exist_ok='True')
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
+#    local_group = comm.group.Incl([rank])
+#	local_comm=MPI.COMM.Create(rank)
     world_size  = MPI.COMM_WORLD.Get_size()
 
 
@@ -92,19 +96,4 @@ def main(nFiles,size,output):
 
 if __name__=='__main__':
     nFiles,size,output,debug = set_params(sys.argv[1:])
-    if debug:
-        pr = cProfile.Profile()
-        pr.enable()
-        main(nFiles,size,output)
-        pr.disable()
-
-        pid=int(os.getenv('SLURM_PROCID'))
-        # Binary results
-        pr.dump_stats('cpu_%02d'%pid)
-        # Text results
-        #with open( 'cpu_%02d' %pid, 'w') as output_file:
-        #    sys.stdout = output_file
-        #    pr.print_stats( sort='time' )
-        #    sys.stdout = sys.__stdout__
-    else:
-        main(nFiles,size,output)
+    main(nFiles,size,output)
